@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from openai import OpenAI
+from tiktoken import encoding_for_model
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -21,17 +22,31 @@ LENSES = [
 ]
 
 def analyze_text(text, lens):
-    system_prompt = f"You are a literary critic analyzing texts through the lens of {lens}."
-    user_prompt = f"Analyze the following text:\n\n{text}"
-
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+    chunks = chunk_text(text)
+    system_prompt = (
+        f"You are a literary critic analyzing texts through the lens of {lens}."
     )
-    return response.choices[0].message.content.strip()
+
+    analyses = []
+
+    for i, chunk in enumerate(chunks, 1):
+        print(f"Analyzing chunk {i}/{len(chunks)}...")
+        user_prompt = f"Analyze the following chunk of text:\n\n{chunk}"
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        analysis = response.choices[0].message.content.strip()
+        analyses.append(f"--- Analysis of chunk {i} ---\n{analysis}\n")
+
+    # Combine all analyses into a single result
+    combined_analysis = "\n".join(analyses)
+    return combined_analysis
+
 
 def extract_text_from_file(file_path):
     ext = os.path.splitext(file_path)[1].lower()
@@ -89,6 +104,16 @@ def get_user_input_text():
     else:
         print("Invalid choice. Exiting.")
         exit(1)
+
+def chunk_text(text, max_words=700):
+    words = text.split()
+    chunks = []
+
+    for i in range(0, len(words), max_words):
+        chunk = " ".join(words[i:i + max_words])
+        chunks.append(chunk)
+
+    return chunks
 
 if __name__ == "__main__":
     print("\nAvailable lenses:")
