@@ -1,6 +1,8 @@
-# app/main.py
-
 import os
+import fitz
+import docx
+import requests
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -31,6 +33,63 @@ def analyze_text(text, lens):
     )
     return response.choices[0].message.content.strip()
 
+def extract_text_from_file(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == ".txt":
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
+    elif ext == ".pdf":
+        doc = fitz.open(file_path)
+        text = "\n".join(page.get_text() for page in doc)
+        doc.close()
+        return text
+    elif ext == ".docx":
+        doc = docx.Document(file_path)
+        return "\n".join(p.text for p in doc.paragraphs)
+    else:
+        raise ValueError("Unsupported file format")
+
+def extract_text_from_url(url):
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup.get_text(separator="\n", strip=True)
+    except Exception as e:
+        raise ValueError(f"Error fetching URL: {e}")
+
+def get_user_input_text():
+    print("\nHow would you like to input your text?")
+    print("1. Paste text")
+    print("2. Upload file (.txt, .pdf, .docx)")
+    print("3. Enter URL")
+    choice = input("Choose option (1/2/3): ").strip()
+
+    if choice == "1":
+        print("\nPaste the text you'd like to analyze. Finish input with an empty line:")
+        lines = []
+        while True:
+            line = input()
+            if line.strip() == "":
+                break
+            lines.append(line)
+        return "\n".join(lines)
+
+    elif choice == "2":
+        file_path = input("\nEnter the full path to your file: ").strip()
+        if not os.path.exists(file_path):
+            print("File not found.")
+            exit(1)
+        return extract_text_from_file(file_path)
+
+    elif choice == "3":
+        url = input("\nEnter the URL: ").strip()
+        return extract_text_from_url(url)
+
+    else:
+        print("Invalid choice. Exiting.")
+        exit(1)
+
 if __name__ == "__main__":
     print("\nAvailable lenses:")
     for i, lens in enumerate(LENSES, 1):
@@ -43,14 +102,7 @@ if __name__ == "__main__":
         print("Invalid choice. Exiting.")
         exit(1)
 
-    print("\nPaste the text you'd like to analyze. Finish input with an empty line:")
-    lines = []
-    while True:
-        line = input()
-        if line.strip() == "":
-            break
-        lines.append(line)
-    text = "\n".join(lines)
+    text = get_user_input_text()
 
     print(f"\nAnalyzing through the lens of {lens}...\n")
     result = analyze_text(text, lens)
