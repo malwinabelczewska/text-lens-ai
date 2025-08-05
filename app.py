@@ -23,29 +23,44 @@ LENSES = [
 
 def analyze_text(text, lens):
     chunks = chunk_text(text)
-    system_prompt = (
-        f"You are a literary critic analyzing texts through the lens of {lens}."
-    )
+    system_prompt = f"You are a literary critic analyzing texts through the lens of {lens}."
 
+    # Step 1: Analyze each chunk
     analyses = []
-
     for i, chunk in enumerate(chunks, 1):
         print(f"Analyzing chunk {i}/{len(chunks)}...")
         user_prompt = f"Analyze the following chunk of text:\n\n{chunk}"
-
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+                {"role": "user", "content": user_prompt}
+            ]
         )
         analysis = response.choices[0].message.content.strip()
-        analyses.append(f"--- Analysis of chunk {i} ---\n{analysis}\n")
+        analyses.append(analysis)
 
-    # Combine all analyses into a single result
-    combined_analysis = "\n".join(analyses)
-    return combined_analysis
+    # Step 2: Synthesize all analyses into one final summary
+    combined_analyses_text = "\n\n".join(analyses)
+    print("\nSynthesizing final analysis...")
+
+    synthesis_prompt = (
+        f"You have just written several partial analyses of a longer text "
+        f"through the lens of {lens}. Combine these into a single, cohesive literary analysis. "
+        f"Ensure the result reads like one continuous critique and not as disjointed parts.\n\n"
+        f"Partial analyses:\n{combined_analyses_text}"
+    )
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": synthesis_prompt}
+        ]
+    )
+    final_analysis = response.choices[0].message.content.strip()
+    return final_analysis
+
 
 
 def extract_text_from_file(file_path):
