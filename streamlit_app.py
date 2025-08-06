@@ -3,11 +3,19 @@ import os
 from dotenv import load_dotenv
 from analyzer import analyze_text
 from extractors import extract_text_from_file, extract_text_from_url
-from prompts import LENSES
+from prompts import LENSES, LENS_DESCRIPTIONS
 
 load_dotenv()
 
 st.set_page_config(page_title="Literary Lens AI", layout="wide")
+
+with st.sidebar:
+    st.header("📖 About Literary Lenses")
+    st.markdown("Choose a lens from the dropdown to see its description below.")
+
+    if "lens" in locals():
+        st.markdown(f"### {lens.title()}")
+        st.write(LENS_DESCRIPTIONS.get(lens, "No description available."))
 
 st.title("🔍 Literary Lens AI")
 st.markdown("Analyze any text using a literary or philosophical lens powered by AI.")
@@ -46,3 +54,19 @@ if text:
             result = analyze_text(text, lens)
         st.subheader(f"Analysis ({lens}):")
         st.write(result)
+
+        filename = f"{lens.replace(' ', '_')}_analysis.txt"
+        st.download_button(
+            label="📥 Download Analysis as .txt",
+            data=result,
+            file_name=filename,
+            mime="text/plain",
+        )
+
+        markdown_result = f"# Analysis: {lens}\n\n{result}"
+        st.download_button(
+            label="📥 Download Analysis as .md",
+            data=markdown_result,
+            file_name=f"{lens.replace(' ', '_')}_analysis.md",
+            mime="text/markdown"
+        )
