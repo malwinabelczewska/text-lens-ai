@@ -1,7 +1,9 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
-from app import analyze_text, extract_text_from_file, extract_text_from_url, LENSES
+from analyzer import analyze_text
+from extractors import extract_text_from_file, extract_text_from_url
+from prompts import LENSES
 
 load_dotenv()
 
